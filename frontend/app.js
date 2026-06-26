@@ -1,4 +1,4 @@
-import { deriveKey, encryptNote, decryptNote } from './crypto.js';
+import { deriveKey, encryptNote, decryptNote, assertCryptoAvailable } from './crypto.js';
 
 const API = '/api';
 let cryptoKey = null;     // AES key, lives only in memory for this session
@@ -1719,6 +1719,11 @@ function init() {
   // the passphrase to derive it again. So we always start at the auth gate.
   $('auth-view').classList.remove('hidden');
   setAuthMode('login');
+  try {
+    assertCryptoAvailable();
+  } catch (e) {
+    $('auth-error').textContent = e.message;
+  }
 }
 
 init();
