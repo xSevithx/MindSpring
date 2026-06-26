@@ -1,0 +1,52 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-notes}
+      POSTGRES_PASSWORD: ${PGPASSWORD:?set PGPASSWORD in .env}
+      POSTGRES_DB: ${PGDATABASE:-securenotes}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-notes} -d ${PGDATABASE:-securenotes}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Not exposed to the host — only the api service can reach it.
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${PGUSER:-notes}
+      PGPASSWORD: ${PGPASSWORD:?set PGPASSWORD in .env}
+      PGDATABASE: ${PGDATABASE:-securenotes}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      HYPERBOLIC_API_KEY: ${HYPERBOLIC_API_KEY:-}
+      HYPERBOLIC_CHAT_MODEL: ${HYPERBOLIC_CHAT_MODEL:-meta-llama/Llama-3.3-70B-Instruct}
+      EMBED_DIM: ${EMBED_DIM:-384}
+    volumes:
+      - extensions:/app/extensions
+    # Not exposed to the host — nginx proxies to it on the internal network.
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  pgdata:
+  extensions:

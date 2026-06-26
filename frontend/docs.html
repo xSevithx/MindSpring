@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindSpring — Extension Development Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Newsreader:ital,opsz@0,6..72;1,6..72&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f3efe6; --paper-deep: #e9e3d6; --ink: #1c1a17;
+      --ink-soft: #5b554b; --ink-faint: #9a9384; --indigo: #283a63;
+      --indigo-bright: #3a5290; --rule: #d7cfbe; --radius: 3px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--paper); color: var(--ink);
+      font-family: "Newsreader", Georgia, serif; font-size: 17px; line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    .doc-wrap {
+      max-width: 780px; margin: 0 auto;
+      padding: 3rem 2rem 4rem;
+    }
+    .doc-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 2.5rem; padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--rule);
+    }
+    .mark { display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--ink); }
+    .mark-name { font-family: "Fraunces", serif; font-weight: 600; font-size: 1.4rem; }
+    .mark-drop {
+      width: 0.75rem; height: 0.75rem; background: var(--indigo);
+      border-radius: 60% 60% 60% 0; transform: rotate(45deg); display: inline-block;
+    }
+    .doc-badge {
+      font-family: "JetBrains Mono", monospace; font-size: 0.65rem;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      background: var(--indigo); color: var(--paper);
+      padding: 0.3rem 0.6rem; border-radius: var(--radius);
+    }
+    h1 {
+      font-family: "Fraunces", serif; font-weight: 600; font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle { color: var(--ink-soft); font-size: 1.05rem; margin-bottom: 2.5rem; }
+    h2 {
+      font-family: "Fraunces", serif; font-weight: 600; font-size: 1.4rem;
+      margin: 2.5rem 0 0.8rem; padding-top: 1.5rem;
+      border-top: 1px solid var(--rule);
+    }
+    h2:first-of-type { border-top: none; padding-top: 0; }
+    h3 {
+      font-family: "JetBrains Mono", monospace; font-size: 0.78rem;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--ink-soft); margin: 1.8rem 0 0.6rem;
+    }
+    p { margin-bottom: 1rem; }
+    code {
+      font-family: "JetBrains Mono", monospace; font-size: 0.85em;
+      background: var(--paper-deep); padding: 0.15em 0.35em;
+      border-radius: var(--radius);
+    }
+    pre {
+      background: #1c1a17; color: #e8e2d6;
+      font-family: "JetBrains Mono", monospace; font-size: 0.82rem;
+      line-height: 1.6; padding: 1.2rem 1.4rem;
+      border-radius: var(--radius); overflow-x: auto;
+      margin: 0.8rem 0 1.2rem;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+    .kw { color: #7cacf8; }
+    .str { color: #a8d4a2; }
+    .cm { color: #6b6560; }
+    .fn { color: #d4b87a; }
+    table {
+      width: 100%; border-collapse: collapse; margin: 0.8rem 0 1.2rem;
+      font-size: 0.92rem;
+    }
+    th {
+      font-family: "JetBrains Mono", monospace; font-size: 0.68rem;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--ink-soft); text-align: left;
+      padding: 0.6rem 0.8rem; border-bottom: 2px solid var(--rule);
+    }
+    td {
+      padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--rule);
+      vertical-align: top;
+    }
+    td code { font-size: 0.82em; }
+    ul, ol { margin: 0.5rem 0 1rem 1.5rem; }
+    li { margin-bottom: 0.3rem; }
+    .callout {
+      background: rgba(40,58,99,0.06); border-left: 3px solid var(--indigo);
+      padding: 0.8rem 1.1rem; border-radius: var(--radius);
+      font-size: 0.92rem; margin: 1rem 0;
+    }
+    .callout strong { color: var(--indigo); }
+    .toc { margin: 1.5rem 0 2rem; }
+    .toc a {
+      color: var(--indigo); text-decoration: none;
+      font-size: 0.95rem; display: block; padding: 0.2rem 0;
+    }
+    .toc a:hover { text-decoration: underline; }
+    a { color: var(--indigo); }
+    @media (max-width: 600px) { .doc-wrap { padding: 1.5rem 1rem; } }
+  </style>
+</head>
+<body>
+  <div class="doc-wrap">
+    <div class="doc-header">
+      <a href="/" class="mark">
+        <span class="mark-drop"></span>
+        <span class="mark-name">MindSpring</span>
+      </a>
+      <span class="doc-badge">Extension Docs</span>
+    </div>
+
+    <h1>Extension Development Guide</h1>
+    <p class="subtitle">Build live features for MindSpring — by hand or by asking the AI.</p>
+
+    <div class="toc">
+      <a href="#overview">1. Overview</a>
+      <a href="#structure">2. Extension Structure</a>
+      <a href="#manifest">3. Manifest Format</a>
+      <a href="#api">4. The <code>inkwell</code> API</a>
+      <a href="#events">5. Lifecycle Events</a>
+      <a href="#panels">6. Registering Panels</a>
+      <a href="#examples">7. Full Examples</a>
+      <a href="#ai-builder">8. AI Builder Mode</a>
+      <a href="#management-api">9. Management REST API</a>
+      <a href="#tips">10. Tips &amp; Constraints</a>
+    </div>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="overview">1. Overview</h2>
+    <p>MindSpring extensions are small, self-contained packages that add features to the app at runtime. Each extension lives in its own directory inside <code>extensions/</code> and consists of a manifest plus optional frontend files (JavaScript, CSS).</p>
+    <p>Extensions can be created two ways:</p>
+    <ul>
+      <li><strong>Ask the AI</strong> — tell the MindSpring AI to "build me a word count panel" and it generates, deploys, and hot-loads the extension in one step.</li>
+      <li><strong>Write by hand</strong> — create the files in <code>extensions/your-id/</code> and restart the app (or call the build API).</li>
+    </ul>
+    <div class="callout">
+      <strong>Zero build step.</strong> The frontend is vanilla JavaScript — no bundler, no transpiler. Extension scripts load directly in the browser via <code>&lt;script&gt;</code> tags.
+    </div>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="structure">2. Extension Structure</h2>
+    <pre><code>extensions/
+  word-count/
+    manifest.json       <span class="cm"># required — metadata and entry points</span>
+    panel.js            <span class="cm"># optional — frontend JavaScript</span>
+    styles.css          <span class="cm"># optional — scoped CSS</span></code></pre>
+    <p>All files must be in the extension's root directory (no subdirectories). Filenames cannot contain <code>..</code> or <code>/</code>.</p>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="manifest">3. Manifest Format</h2>
+    <pre><code>{
+  <span class="str">"id"</span>:          <span class="str">"word-count"</span>,
+  <span class="str">"name"</span>:        <span class="str">"Word Count"</span>,
+  <span class="str">"description"</span>: <span class="str">"Shows word and character counts for the active note"</span>,
+  <span class="str">"version"</span>:     <span class="str">"1.0.0"</span>,
+  <span class="str">"enabled"</span>:     <span class="kw">true</span>,
+  <span class="str">"frontend"</span>: {
+    <span class="str">"panel"</span>:   <span class="str">"panel.js"</span>,
+    <span class="str">"styles"</span>:  <span class="str">"styles.css"</span>
+  }
+}</code></pre>
+    <table>
+      <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>id</code></td><td>string</td><td>Unique identifier. Lowercase alphanumeric + dashes only (<code>/^[a-z0-9-]+$/</code>).</td></tr>
+      <tr><td><code>name</code></td><td>string</td><td>Human-readable display name.</td></tr>
+      <tr><td><code>description</code></td><td>string</td><td>Short description shown in Settings.</td></tr>
+      <tr><td><code>version</code></td><td>string</td><td>Semver version string.</td></tr>
+      <tr><td><code>enabled</code></td><td>boolean</td><td>Set to <code>false</code> to disable without deleting.</td></tr>
+      <tr><td><code>frontend.panel</code></td><td>string</td><td>Filename of the JS file to load (loaded as a regular script, not a module).</td></tr>
+      <tr><td><code>frontend.styles</code></td><td>string</td><td>Filename of the CSS file to load.</td></tr>
+    </table>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="api">4. The <code>inkwell</code> API</h2>
+    <p>Every extension has access to the <code>window.inkwell</code> global object. This is the only interface between extensions and the core app.</p>
+
+    <table>
+      <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+      <tr>
+        <td><code>inkwell.registerPanel({ id, title, render })</code></td>
+        <td>void</td>
+        <td>Register a panel that appears in the Extensions side panel. <code>render(container)</code> receives a DOM element to populate.</td>
+      </tr>
+      <tr>
+        <td><code>inkwell.registerFooterWidget({ id, render })</code></td>
+        <td>void</td>
+        <td>Register a widget for the editor footer area.</td>
+      </tr>
+      <tr>
+        <td><code>inkwell.on(event, callback)</code></td>
+        <td>unsubscribe fn</td>
+        <td>Listen to a lifecycle event (see table below). Returns a function you can call to stop listening.</td>
+      </tr>
+      <tr>
+        <td><code>inkwell.getActiveNote()</code></td>
+        <td>object | null</td>
+        <td>Returns <code>{ id, title, body, created_at, updated_at }</code> for the currently selected note, or <code>null</code>.</td>
+      </tr>
+      <tr>
+        <td><code>inkwell.getNotes()</code></td>
+        <td>array</td>
+        <td>Returns a copy of all decrypted notes in memory.</td>
+      </tr>
+      <tr>
+        <td><code>inkwell.refreshPanel(id)</code></td>
+        <td>void</td>
+        <td>Re-render a specific panel by calling its <code>render()</code> function again.</td>
+      </tr>
+      <tr>
+        <td><code>inkwell.notify(message, type)</code></td>
+        <td>void</td>
+        <td>Show a toast notification. <code>type</code> is <code>'info'</code> (default) or <code>'error'</code>.</td>
+      </tr>
+      <tr>
+        <td><code>inkwell.api(path, opts)</code></td>
+        <td>Promise</td>
+        <td>Make an authenticated API call. Same signature as <code>fetch</code> but includes credentials and JSON headers. Path is relative to <code>/api</code>.</td>
+      </tr>
+    </table>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="events">5. Lifecycle Events</h2>
+    <table>
+      <tr><th>Event</th><th>Payload</th><th>Fires when</th></tr>
+      <tr><td><code>noteSelect</code></td><td><code>{ id, title, body, ... }</code></td><td>A note is selected in the sidebar.</td></tr>
+      <tr><td><code>noteSave</code></td><td><code>{ id, title, body, ... }</code></td><td>A note is saved (after the 700ms debounce).</td></tr>
+      <tr><td><code>noteCreate</code></td><td><code>{ id, title, body, ... }</code></td><td>A new note is created.</td></tr>
+      <tr><td><code>noteDelete</code></td><td><code>id</code> (string)</td><td>A note is deleted. Payload is just the note ID.</td></tr>
+      <tr><td><code>notesLoad</code></td><td><code>[{ id, title, body, ... }]</code></td><td>All notes have been decrypted and loaded after login.</td></tr>
+    </table>
+    <p>Subscribe to events to react to user actions and keep your panel content up to date.</p>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="panels">6. Registering Panels</h2>
+    <p>Panels appear as collapsible sections inside the Extensions side panel (the panel icon in the sidebar). Each panel gets a container element to render into.</p>
+    <pre><code>inkwell.<span class="fn">registerPanel</span>({
+  <span class="str">id</span>: <span class="str">'word-count'</span>,
+  <span class="str">title</span>: <span class="str">'Word Count'</span>,
+  <span class="fn">render</span>(container) {
+    <span class="kw">const</span> note = inkwell.<span class="fn">getActiveNote</span>();
+    <span class="kw">if</span> (!note) {
+      container.innerHTML = <span class="str">'&lt;em&gt;Select a note&lt;/em&gt;'</span>;
+      <span class="kw">return</span>;
+    }
+    <span class="kw">const</span> words = note.body.<span class="fn">split</span>(<span class="str">/\s+/</span>).<span class="fn">filter</span>(Boolean).length;
+    <span class="kw">const</span> chars = note.body.length;
+    container.innerHTML = <span class="str">`Words: ${words} &amp;middot; Characters: ${chars}`</span>;
+  }
+});
+
+<span class="cm">// Re-render when the user switches notes or saves</span>
+inkwell.<span class="fn">on</span>(<span class="str">'noteSelect'</span>, () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'word-count'</span>));
+inkwell.<span class="fn">on</span>(<span class="str">'noteSave'</span>,   () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'word-count'</span>));</code></pre>
+
+    <div class="callout">
+      <strong>Important:</strong> <code>panel.js</code> is loaded as a regular <code>&lt;script&gt;</code>, not an ES module. Do <strong>not</strong> use <code>import</code>/<code>export</code>. Access everything through the <code>inkwell</code> global.
+    </div>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="examples">7. Full Examples</h2>
+
+    <h3>Example 1: Reading Time Estimator</h3>
+    <p><strong>manifest.json</strong></p>
+    <pre><code>{
+  <span class="str">"id"</span>: <span class="str">"reading-time"</span>,
+  <span class="str">"name"</span>: <span class="str">"Reading Time"</span>,
+  <span class="str">"description"</span>: <span class="str">"Estimates how long the current note takes to read"</span>,
+  <span class="str">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"enabled"</span>: <span class="kw">true</span>,
+  <span class="str">"frontend"</span>: { <span class="str">"panel"</span>: <span class="str">"panel.js"</span> }
+}</code></pre>
+    <p><strong>panel.js</strong></p>
+    <pre><code>inkwell.<span class="fn">registerPanel</span>({
+  <span class="str">id</span>: <span class="str">'reading-time'</span>,
+  <span class="str">title</span>: <span class="str">'Reading Time'</span>,
+  <span class="fn">render</span>(el) {
+    <span class="kw">const</span> note = inkwell.<span class="fn">getActiveNote</span>();
+    <span class="kw">if</span> (!note) { el.innerHTML = <span class="str">'&lt;em&gt;No note selected&lt;/em&gt;'</span>; <span class="kw">return</span>; }
+    <span class="kw">const</span> words = note.body.<span class="fn">split</span>(<span class="str">/\s+/</span>).<span class="fn">filter</span>(Boolean).length;
+    <span class="kw">const</span> mins = Math.<span class="fn">max</span>(1, Math.<span class="fn">round</span>(words / 200));
+    el.innerHTML = <span class="str">`About ${mins} min read (${words} words)`</span>;
+  }
+});
+
+inkwell.<span class="fn">on</span>(<span class="str">'noteSelect'</span>, () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'reading-time'</span>));
+inkwell.<span class="fn">on</span>(<span class="str">'noteSave'</span>,   () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'reading-time'</span>));</code></pre>
+
+    <h3>Example 2: Note Stats Dashboard</h3>
+    <p><strong>panel.js</strong> — shows total note count and most recently updated note.</p>
+    <pre><code>inkwell.<span class="fn">registerPanel</span>({
+  <span class="str">id</span>: <span class="str">'note-stats'</span>,
+  <span class="str">title</span>: <span class="str">'Note Stats'</span>,
+  <span class="fn">render</span>(el) {
+    <span class="kw">const</span> notes = inkwell.<span class="fn">getNotes</span>();
+    <span class="kw">if</span> (!notes.length) {
+      el.innerHTML = <span class="str">'&lt;em&gt;No notes yet&lt;/em&gt;'</span>;
+      <span class="kw">return</span>;
+    }
+    <span class="kw">const</span> totalWords = notes.<span class="fn">reduce</span>((sum, n) =&gt;
+      sum + (n.body || <span class="str">''</span>).<span class="fn">split</span>(<span class="str">/\s+/</span>).<span class="fn">filter</span>(Boolean).length, 0);
+    <span class="kw">const</span> latest = notes[0];
+    el.innerHTML = <span class="str">`
+      &lt;div&gt;&lt;strong&gt;${notes.length}&lt;/strong&gt; notes&lt;/div&gt;
+      &lt;div&gt;&lt;strong&gt;${totalWords.toLocaleString()}&lt;/strong&gt; total words&lt;/div&gt;
+      &lt;div&gt;Latest: ${latest.title || 'Untitled'}&lt;/div&gt;
+    `</span>;
+  }
+});
+
+inkwell.<span class="fn">on</span>(<span class="str">'notesLoad'</span>,  () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'note-stats'</span>));
+inkwell.<span class="fn">on</span>(<span class="str">'noteCreate'</span>, () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'note-stats'</span>));
+inkwell.<span class="fn">on</span>(<span class="str">'noteDelete'</span>, () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'note-stats'</span>));
+inkwell.<span class="fn">on</span>(<span class="str">'noteSave'</span>,   () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'note-stats'</span>));</code></pre>
+
+    <h3>Example 3: Extension with Custom CSS</h3>
+    <p><strong>panel.js</strong></p>
+    <pre><code>inkwell.<span class="fn">registerPanel</span>({
+  <span class="str">id</span>: <span class="str">'tag-cloud'</span>,
+  <span class="str">title</span>: <span class="str">'Tag Cloud'</span>,
+  <span class="fn">render</span>(el) {
+    <span class="kw">const</span> notes = inkwell.<span class="fn">getNotes</span>();
+    <span class="kw">const</span> freq = {};
+    notes.<span class="fn">forEach</span>(n =&gt; {
+      (n.body || <span class="str">''</span>).<span class="fn">match</span>(<span class="str">/#\w+/g</span>)?.<span class="fn">forEach</span>(tag =&gt; {
+        freq[tag] = (freq[tag] || 0) + 1;
+      });
+    });
+    <span class="kw">const</span> tags = Object.<span class="fn">entries</span>(freq).<span class="fn">sort</span>((a, b) =&gt; b[1] - a[1]);
+    el.innerHTML = tags.<span class="fn">map</span>(([tag, count]) =&gt;
+      <span class="str">`&lt;span class="tc-tag"&gt;${tag} &lt;small&gt;${count}&lt;/small&gt;&lt;/span&gt;`</span>
+    ).<span class="fn">join</span>(<span class="str">' '</span>) || <span class="str">'&lt;em&gt;No #tags found in notes&lt;/em&gt;'</span>;
+  }
+});
+
+inkwell.<span class="fn">on</span>(<span class="str">'notesLoad'</span>, () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'tag-cloud'</span>));
+inkwell.<span class="fn">on</span>(<span class="str">'noteSave'</span>,  () =&gt; inkwell.<span class="fn">refreshPanel</span>(<span class="str">'tag-cloud'</span>));</code></pre>
+    <p><strong>styles.css</strong></p>
+    <pre><code>.tc-tag {
+  display: inline-block;
+  background: #e9e3d6;
+  padding: 0.2em 0.5em;
+  border-radius: 3px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+  margin: 0.15em;
+}
+.tc-tag small { opacity: 0.5; }</code></pre>
+    <div class="callout">
+      <strong>CSS tip:</strong> Prefix your class names with a short identifier (like <code>tc-</code> above) to avoid conflicts with MindSpring's core styles or other extensions.
+    </div>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="ai-builder">8. AI Builder Mode</h2>
+    <p>The easiest way to create extensions is to ask the MindSpring AI directly. The AI has full knowledge of the extension API and will generate, deploy, and hot-load extensions in one step.</p>
+    <p>Just open the AI panel and describe what you want:</p>
+    <ul>
+      <li><em>"Build me a word count panel that updates live"</em></li>
+      <li><em>"Create an extension that shows a tag cloud from #hashtags in my notes"</em></li>
+      <li><em>"Build a panel that lists all notes sorted by length"</em></li>
+      <li><em>"Make a pomodoro timer widget"</em></li>
+    </ul>
+    <p>The AI generates the extension code, the backend writes it to the <code>extensions/</code> directory, and the frontend hot-loads it — all automatically. You'll see a toast notification when the extension is installed, and it will appear in the Extensions panel immediately.</p>
+    <p>To modify an existing AI-built extension, just ask: <em>"Update the word count panel to also show paragraph count."</em></p>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="management-api">9. Management REST API</h2>
+    <p>All routes are under <code>/api/extensions</code>. Management routes (POST, PATCH, DELETE) require authentication.</p>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Auth</th><th>Description</th></tr>
+      <tr><td><code>GET</code></td><td><code>/api/extensions</code></td><td>No</td><td>List enabled extensions (frontend loader uses this).</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/extensions/:id/files/:filename</code></td><td>No</td><td>Serve an extension's frontend file (JS, CSS).</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/extensions/admin/list</code></td><td>Yes</td><td>List all extensions including disabled ones.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/extensions/build</code></td><td>Yes</td><td>Deploy an extension. Body: <code>{ id, name, description, files: { "panel.js": "...", ... } }</code></td></tr>
+      <tr><td><code>PATCH</code></td><td><code>/api/extensions/:id</code></td><td>Yes</td><td>Update manifest. Body: <code>{ enabled: false }</code></td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/api/extensions/:id</code></td><td>Yes</td><td>Permanently delete an extension and all its files.</td></tr>
+    </table>
+
+    <h3>Deploy via curl</h3>
+    <pre><code>curl -X POST http://localhost:8080/api/extensions/build \
+  -H "Content-Type: application/json" \
+  -H "Cookie: token=YOUR_JWT" \
+  -d '{
+    "id": "hello-world",
+    "name": "Hello World",
+    "description": "A minimal test extension",
+    "files": {
+      "panel.js": "inkwell.registerPanel({ id: \"hello\", title: \"Hello\", render(el) { el.textContent = \"Hello from an extension!\"; } });"
+    }
+  }'</code></pre>
+
+    <!-- ────────────────────────────────── -->
+    <h2 id="tips">10. Tips &amp; Constraints</h2>
+    <ul>
+      <li><strong>No ES modules.</strong> Extension scripts are loaded via <code>&lt;script src="..."&gt;</code>, not <code>&lt;script type="module"&gt;</code>. Don't use <code>import</code>/<code>export</code>.</li>
+      <li><strong>No build step.</strong> Write vanilla JavaScript. No JSX, no TypeScript, no bundler required.</li>
+      <li><strong>Scope your CSS.</strong> Use a unique prefix for all class names to avoid collisions.</li>
+      <li><strong>Keep it small.</strong> Extensions should be focused and self-contained. One panel, one purpose.</li>
+      <li><strong>Error isolation.</strong> If your <code>render()</code> function throws, the error is caught and displayed in the panel — it won't crash the app.</li>
+      <li><strong>Persistence.</strong> Extensions are stored in a Docker volume and survive container restarts. They persist across <code>docker compose down</code> unless you use <code>-v</code> to remove volumes.</li>
+      <li><strong>Security model.</strong> Extensions run with full access to decrypted note data in the browser. Only install extensions you trust. Self-hosted users control everything.</li>
+      <li><strong>No backend extensions (yet).</strong> The current system supports frontend-only extensions. Backend route extensions are reserved for a future version.</li>
+    </ul>
+
+    <div style="margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--rule); color:var(--ink-faint); font-size:0.85rem;">
+      MindSpring Extension API v1.0 &middot; <a href="/">Back to app</a>
+    </div>
+  </div>
+</body>
+</html>

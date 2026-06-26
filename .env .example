@@ -1,0 +1,21 @@
+# Copy to .env and fill in. Never commit the real .env.
+
+# Postgres credentials (the DB is never exposed outside the Docker network)
+PGUSER=notes
+PGDATABASE=securenotes
+PGPASSWORD=change-me-to-a-long-random-string
+
+# Secret used to sign session cookies (JWT). Generate with:
+#   openssl rand -base64 48
+JWT_SECRET=change-me-openssl-rand-base64-48
+
+# Where the app is served. For local use the default is fine.
+# In production set this to your real https origin.
+WEB_PORT=8080
+CORS_ORIGIN=http://localhost:8080
+
+# Hyperbolic AI (optional — enables AI notes assistant)
+# Embeddings are generated locally; only chat uses the Hyperbolic API.
+HYPERBOLIC_API_KEY=
+HYPERBOLIC_CHAT_MODEL=meta-llama/Llama-3.3-70B-Instruct
+EMBED_DIM=384

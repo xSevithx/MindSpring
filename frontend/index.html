@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindSpring — private notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Newsreader:ital,opsz@0,6..72;1,6..72&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- AUTH GATE -->
+  <main id="auth-view" class="auth hidden">
+    <div class="auth-card">
+      <div class="mark">
+        <span class="mark-drop"></span>
+        <span class="mark-name">MindSpring</span>
+      </div>
+      <p class="auth-tagline">Notes only you can read. Encrypted in your browser, before they ever leave it.</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab is-active" data-mode="login">Sign in</button>
+        <button class="auth-tab" data-mode="register">Create account</button>
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" placeholder="you@example.com" />
+      </div>
+      <div class="field">
+        <label for="password">Passphrase</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="At least 10 characters" />
+        <p class="field-hint" id="pw-hint">This unlocks your notes. We can't reset it — if you lose it, the notes stay locked forever.</p>
+      </div>
+
+      <button id="auth-submit" class="btn-primary">Sign in</button>
+      <p id="auth-error" class="auth-error" role="alert"></p>
+    </div>
+  </main>
+
+  <!-- APP -->
+  <div id="app-view" class="app hidden">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <div class="mark mark-small">
+          <span class="mark-drop"></span>
+          <span class="mark-name">MindSpring</span>
+        </div>
+        <div class="sidebar-head-actions">
+          <button id="ext-toggle" class="btn-icon" title="Extensions">Ext</button>
+          <button id="ai-toggle" class="btn-icon" title="AI Assistant">AI</button>
+          <button id="new-note" class="btn-new" title="New note">+</button>
+        </div>
+      </div>
+      <div class="sidebar-nav">
+        <button class="sidebar-nav-tab is-active" data-view="notes">Notes</button>
+        <button class="sidebar-nav-tab" data-view="tables">Tables</button>
+      </div>
+      <div id="notes-sidebar" class="notes-sidebar">
+        <input id="search" class="search" type="search" placeholder="Search your notes" />
+        <ul id="note-list" class="note-list"></ul>
+      </div>
+      <div id="tables-sidebar" class="tables-sidebar hidden">
+        <div class="tbl-sidebar-head">
+          <button id="new-table-btn" class="btn-primary-sm" style="width:100%">New Table</button>
+          <button id="import-spreadsheet-btn" class="btn-import-sm" style="width:100%">&#x1F4C4; Import Spreadsheet</button>
+          <input id="import-file-input" type="file" accept=".xlsx,.xls,.csv,.tsv" class="hidden" />
+        </div>
+        <ul id="table-list" class="note-list"></ul>
+      </div>
+      <div class="sidebar-foot">
+        <span id="user-email" class="user-email"></span>
+        <div class="sidebar-actions">
+          <a href="/docs.html" target="_blank" class="btn-ghost" title="Extension Docs">Docs</a>
+          <button id="settings-btn" class="btn-ghost" title="Settings">Settings</button>
+          <div class="export-wrap">
+            <button id="export-btn" class="btn-ghost" title="Export notes">Export</button>
+            <div id="export-menu" class="export-menu hidden">
+              <button data-format="json" class="export-option">JSON</button>
+              <button data-format="md" class="export-option">Markdown</button>
+            </div>
+          </div>
+          <button id="logout" class="btn-ghost">Lock</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="editor">
+      <div id="empty-state" class="empty">
+        <span class="empty-drop"></span>
+        <p>Pick a note, or start a new one.</p>
+      </div>
+      <div id="editor-pane" class="editor-pane hidden">
+        <div id="find-bar" class="find-bar hidden">
+          <input id="find-input" class="find-input" type="text" placeholder="Find in note…" />
+          <span id="find-count" class="find-count"></span>
+          <button id="find-prev" class="find-nav" title="Previous">&#x25B2;</button>
+          <button id="find-next" class="find-nav" title="Next">&#x25BC;</button>
+          <button id="find-close" class="find-nav" title="Close">&#x2715;</button>
+        </div>
+        <input id="note-title" class="note-title" placeholder="Title" />
+        <div class="note-body-wrap">
+          <div id="find-backdrop" class="find-backdrop"></div>
+          <textarea id="note-body" class="note-body" placeholder="Start writing…"></textarea>
+        </div>
+        <div class="editor-foot">
+          <span id="save-status" class="save-status">Saved</span>
+          <button id="delete-note" class="btn-ghost danger">Delete</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLES VIEW -->
+    <section id="tables-view" class="tables-view hidden">
+      <div id="tbl-empty" class="empty">
+        <span class="empty-drop"></span>
+        <p>Select a table or create a new one.</p>
+      </div>
+      <div id="tbl-grid-pane" class="tbl-grid-pane hidden">
+        <div class="tbl-grid-head">
+          <h2 id="tbl-grid-title" class="tbl-grid-title"></h2>
+          <div class="tbl-grid-actions">
+            <button id="tbl-add-field" class="btn-icon" title="Add column">+ Field</button>
+            <button id="tbl-add-record" class="btn-primary-sm">+ Record</button>
+            <button id="tbl-delete-table" class="btn-ghost danger" title="Delete this table">Delete Table</button>
+          </div>
+        </div>
+        <div class="tbl-grid-wrap">
+          <table id="tbl-grid" class="tbl-grid">
+            <thead id="tbl-grid-head-row"></thead>
+            <tbody id="tbl-grid-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXTENSION PANELS CONTAINER -->
+    <aside id="ext-panel" class="ext-panel hidden">
+      <div class="ext-panel-head">
+        <span class="ext-panel-title">Extensions</span>
+        <button id="ext-close" class="btn-icon" title="Close">&#x2715;</button>
+      </div>
+      <div id="ext-tabs" class="ext-tabs"></div>
+      <div id="ext-content" class="ext-content"></div>
+    </aside>
+
+    <!-- AI CHAT PANEL -->
+    <aside id="ai-panel" class="ai-panel hidden">
+      <div class="ai-panel-head">
+        <span class="ai-panel-title">MindSpring AI</span>
+        <button id="ai-close" class="btn-icon" title="Close">&#x2715;</button>
+      </div>
+      <div class="ai-tabs-bar">
+        <ul id="ai-convo-tabs" class="ai-convo-tabs"></ul>
+        <button id="ai-new-convo" class="btn-icon-sm" title="New chat">+</button>
+      </div>
+      <div id="ai-messages" class="ai-messages">
+        <div class="ai-empty-chat">Ask anything about your notes.</div>
+      </div>
+      <div id="ai-file-preview" class="ai-file-preview hidden">
+        <span id="ai-file-name" class="ai-file-name"></span>
+        <button id="ai-file-import" class="btn-file-action" title="Import directly as tables">Import as Tables</button>
+        <button id="ai-file-clear" class="ai-file-clear" title="Remove file">&#x2715;</button>
+      </div>
+      <div class="ai-input-bar">
+        <button id="ai-upload-btn" class="btn-upload" title="Attach file (Excel, CSV)">&#x1F4CE;</button>
+        <input id="ai-file-input" type="file" accept=".xlsx,.xls,.csv,.tsv" class="hidden" />
+        <input id="ai-input" class="ai-input" type="text" placeholder="Ask about your notes..." />
+        <button id="ai-send" class="btn-send" title="Send">&#x2192;</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-overlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span class="modal-title">Settings</span>
+        <button id="settings-close" class="btn-icon" title="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <section class="settings-section">
+          <h3 class="settings-heading">AI Assistant</h3>
+          <div id="ai-status" class="ai-status">
+            <span id="ai-status-text">Checking...</span>
+          </div>
+          <div id="ai-warning" class="ai-warning hidden">
+            <strong>Security notice:</strong> Syncing enables AI features by sending your
+            decrypted note content to the server and Hyperbolic's API. Semantic embeddings
+            will be stored alongside your encrypted notes. You can purge all AI data at any time.
+          </div>
+          <div class="settings-row">
+            <button id="ai-sync-btn" class="btn-primary-sm">Sync notes to AI</button>
+            <span id="ai-sync-progress" class="ai-sync-progress"></span>
+          </div>
+          <div class="settings-row">
+            <label class="toggle-label">
+              <input id="ai-auto-sync" type="checkbox" />
+              <span>Auto-sync on save</span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <button id="ai-purge-btn" class="btn-ghost danger">Purge AI data</button>
+          </div>
+        </section>
+        <section class="settings-section">
+          <h3 class="settings-heading">Extensions</h3>
+          <div id="ext-list-settings" class="ext-list-settings">
+            <span class="ai-status">No extensions installed</span>
+          </div>
+          <div class="settings-row" style="margin-top:0.6rem">
+            <button id="ext-new-btn" class="btn-primary-sm">New Extension</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXTENSION EDITOR MODAL -->
+  <div id="ext-editor-overlay" class="modal-overlay hidden">
+    <div class="modal-card ext-editor-card">
+      <div class="modal-head">
+        <span class="modal-title" id="ext-editor-title">Edit Extension</span>
+        <button id="ext-editor-close" class="btn-icon" title="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body ext-editor-body">
+        <div class="ext-editor-meta">
+          <div class="ext-editor-field">
+            <label for="ext-edit-id">ID</label>
+            <input id="ext-edit-id" type="text" placeholder="my-extension" />
+          </div>
+          <div class="ext-editor-field">
+            <label for="ext-edit-name">Name</label>
+            <input id="ext-edit-name" type="text" placeholder="My Extension" />
+          </div>
+          <div class="ext-editor-field ext-editor-field-wide">
+            <label for="ext-edit-desc">Description</label>
+            <input id="ext-edit-desc" type="text" placeholder="What it does..." />
+          </div>
+        </div>
+        <div class="ext-editor-file-bar">
+          <ul id="ext-editor-file-tabs" class="ext-editor-file-tabs"></ul>
+          <button id="ext-editor-add-file" class="btn-icon-sm" title="Add file">+</button>
+        </div>
+        <textarea id="ext-editor-code" class="ext-editor-code" spellcheck="false"></textarea>
+        <div class="ext-editor-actions">
+          <button id="ext-editor-save" class="btn-primary-sm">Save &amp; Deploy</button>
+          <span id="ext-editor-status" class="ext-editor-status"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECORD FORM MODAL -->
+  <div id="record-overlay" class="modal-overlay hidden">
+    <div class="modal-card ext-editor-card">
+      <div class="modal-head">
+        <span class="modal-title" id="record-modal-title">Add Record</span>
+        <button id="record-close" class="btn-icon" title="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <div id="record-fields" class="record-fields"></div>
+        <div class="ext-editor-actions" style="margin-top:1rem">
+          <button id="record-save" class="btn-primary-sm">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIELD FORM MODAL -->
+  <div id="field-overlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span class="modal-title">Add Field</span>
+        <button id="field-close" class="btn-icon" title="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="field-name">Field Name</label>
+          <input id="field-name" type="text" placeholder="e.g. IP Address" />
+        </div>
+        <div class="field">
+          <label for="field-type">Type</label>
+          <select id="field-type" class="field-select">
+            <option value="text">Text</option>
+            <option value="longtext">Long Text</option>
+            <option value="number">Number</option>
+            <option value="select">Select</option>
+            <option value="multiselect">Multi-Select</option>
+            <option value="date">Date</option>
+            <option value="checkbox">Checkbox</option>
+            <option value="url">URL</option>
+            <option value="link">Link to Table</option>
+          </select>
+        </div>
+        <div id="field-options-wrap" class="field hidden">
+          <label for="field-options-input">Options (comma-separated)</label>
+          <input id="field-options-input" type="text" placeholder="Option 1, Option 2, Option 3" />
+        </div>
+        <div id="field-link-wrap" class="field hidden">
+          <label for="field-link-table">Linked Table</label>
+          <select id="field-link-table" class="field-select"></select>
+        </div>
+        <div class="ext-editor-actions" style="margin-top:1rem">
+          <button id="field-save" class="btn-primary-sm">Add Field</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW TABLE MODAL -->
+  <div id="new-table-overlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span class="modal-title">New Table</span>
+        <button id="new-table-close" class="btn-icon" title="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="new-table-name">Table Name</label>
+          <input id="new-table-name" type="text" placeholder="e.g. Systems Inventory" />
+        </div>
+        <div class="field">
+          <label for="new-table-desc">Description</label>
+          <input id="new-table-desc" type="text" placeholder="What this table tracks..." />
+        </div>
+        <div class="ext-editor-actions" style="margin-top:1rem">
+          <button id="new-table-save" class="btn-primary-sm">Create Table</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="extension-api.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
