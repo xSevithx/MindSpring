@@ -44,9 +44,16 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+    environment:
+      # Included as a SAN in the self-signed cert so the LAN IP matches.
+      HOST_IP: ${HOST_IP:-}
     ports:
       - "${WEB_PORT:-8080}:80"
+      - "${WEB_HTTPS_PORT:-8443}:443"
+    volumes:
+      - webcerts:/etc/nginx/certs
 
 volumes:
   pgdata:
   extensions:
+  webcerts:
