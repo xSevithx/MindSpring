@@ -910,17 +910,129 @@ textarea.record-field-input { min-height: 4rem; resize: vertical; }
 .toast-fade { opacity: 0; }
 .toast-error { background: var(--danger); }
 
+/* ---------- Mobile chrome (hidden on desktop) ---------- */
+.mobile-topbar { display: none; }
+.mobile-backdrop { display: none; }
+.mobile-icon-btn {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--indigo);
+  font-size: 1.3rem; line-height: 1;
+  width: 2.6rem; height: 2.6rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-icon-btn:active { background: var(--paper-deep); }
+
+/* ---------- Tablet ---------- */
+@media (max-width: 960px) {
+  .app { grid-template-columns: 260px 1fr; }
+  .tbl-grid-head { padding: 1.2rem 1.2rem 0.8rem; }
+  .tbl-grid-wrap { padding: 0 1.2rem 1.2rem; }
+}
+
 /* ---------- Mobile ---------- */
 @media (max-width: 720px) {
-  .app { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
-  .app.show-list .sidebar { display: flex; }
-  .app.show-list .editor { display: none; }
-  .editor-pane { padding: 2rem 1.3rem; }
+  /* App becomes a single vertical stack: top bar + content */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-shrink: 0;
+    padding: 0.55rem 0.8rem;
+    background: var(--paper-deep);
+    border-bottom: 1px solid var(--rule);
+    z-index: 40;
+  }
+  .mobile-topbar .mark-name { font-size: 1.1rem; }
+
+  /* Sidebar turns into a slide-in drawer */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 86%;
+    max-width: 330px;
+    border-right: 1px solid var(--rule);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 60;
+    box-shadow: 6px 0 28px -12px rgba(28,26,23,0.5);
+  }
+  .app.drawer-open .sidebar { transform: translateX(0); }
+
+  .mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(28,26,23,0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 55;
+  }
+  .app.drawer-open .mobile-backdrop { opacity: 1; pointer-events: auto; }
+
+  /* Content fills the area below the top bar */
+  .editor,
+  .tables-view {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .editor-pane { padding: 1.6rem 1.2rem 1.4rem; }
+  .note-title { font-size: 1.6rem; }
+  .note-body { font-size: 1.08rem; }
+
+  /* Slide-over panels take the full screen */
   .ai-panel { width: 100%; }
   .ext-panel { width: 100%; }
-  .modal-card { margin: 1rem; }
+
+  /* Tables: let the header actions wrap and the grid scroll */
+  .tbl-grid-head {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 1rem 0.6rem;
+  }
+  .tbl-grid-title { font-size: 1.2rem; flex-basis: 100%; }
+  .tbl-grid-actions { flex-wrap: wrap; }
+  .tbl-grid-wrap { padding: 0 1rem 1.5rem; -webkit-overflow-scrolling: touch; }
+  /* On touch screens cells can't rely on hover — keep row actions visible */
+  .tbl-grid td.tbl-cell-actions { opacity: 1; }
+
+  /* Modals sit closer to full-width and can scroll */
+  .modal-overlay { align-items: flex-end; }
+  .modal-card {
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 92vh;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
   .toast-container { right: 0.5rem; bottom: 0.5rem; left: 0.5rem; }
+  .toast { text-align: center; }
+
+  /* Prevent iOS zoom-on-focus by keeping inputs at >=16px */
+  input, textarea, select,
+  .field input, .search, .ai-input, .find-input,
+  .record-field-input, .field-select, .tbl-cell-edit,
+  .note-title, .note-body, .ext-editor-field input {
+    font-size: 16px;
+  }
+
+  /* Roomier tap targets for the small ghost/icon buttons */
+  .btn-ghost { padding: 0.45rem 0.5rem; }
+  .sidebar-foot { flex-wrap: wrap; gap: 0.4rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

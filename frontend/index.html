@@ -41,6 +41,17 @@
 
   <!-- APP -->
   <div id="app-view" class="app hidden">
+    <!-- MOBILE TOP BAR (only visible on small screens) -->
+    <header class="mobile-topbar">
+      <button id="mobile-menu" class="mobile-icon-btn" title="Menu" aria-label="Open menu">&#x2630;</button>
+      <div class="mark mark-small">
+        <span class="mark-drop"></span>
+        <span class="mark-name">MindSpring</span>
+      </div>
+      <button id="mobile-new" class="mobile-icon-btn" title="New note" aria-label="New note">+</button>
+    </header>
+    <div id="mobile-backdrop" class="mobile-backdrop"></div>
+
     <aside class="sidebar">
       <div class="sidebar-head">
         <div class="mark mark-small">

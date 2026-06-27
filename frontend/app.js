@@ -14,6 +14,12 @@ let aiSending = false;
 
 const $ = (id) => document.getElementById(id);
 
+// ---------- Mobile drawer ----------
+function isMobile() { return window.matchMedia('(max-width: 720px)').matches; }
+function openDrawer() { $('app-view').classList.add('drawer-open'); }
+function closeDrawer() { $('app-view').classList.remove('drawer-open'); }
+function toggleDrawer() { $('app-view').classList.toggle('drawer-open'); }
+
 // ---------- API helpers ----------
 async function api(path, opts = {}) {
   const res = await fetch(API + path, {
@@ -145,6 +151,7 @@ function selectNote(id) {
   $('note-body').value = n.body || '';
   $('save-status').textContent = 'Saved';
   renderList($('search').value);
+  if (isMobile()) closeDrawer();
   window.inkwell._emit('noteSelect', n);
 }
 
@@ -242,6 +249,7 @@ function handleExport(format) {
 function toggleAIPanel() {
   const panel = $('ai-panel');
   const isOpen = !panel.classList.contains('hidden');
+  if (!isOpen) closeDrawer();
   panel.classList.toggle('hidden');
   if (!isOpen && !conversations.length) {
     loadConversations();
@@ -746,7 +754,9 @@ async function hotReloadExtension(extId) {
 }
 
 function toggleExtPanel() {
-  $('ext-panel').classList.toggle('hidden');
+  const panel = $('ext-panel');
+  if (panel.classList.contains('hidden')) closeDrawer();
+  panel.classList.toggle('hidden');
 }
 
 function renderExtPanels() {
@@ -900,6 +910,7 @@ async function openTable(tableId) {
   renderTableList();
   $('tbl-empty').classList.add('hidden');
   $('tbl-grid-pane').classList.remove('hidden');
+  if (isMobile()) closeDrawer();
 
   const tbl = userTables.find((t) => t.id === tableId);
   $('tbl-grid-title').textContent = tbl?.name || '';
@@ -1605,6 +1616,11 @@ function init() {
 
   $('new-note').addEventListener('click', newNote);
   $('logout').addEventListener('click', logout);
+
+  // Mobile top bar / drawer
+  $('mobile-menu').addEventListener('click', toggleDrawer);
+  $('mobile-backdrop').addEventListener('click', closeDrawer);
+  $('mobile-new').addEventListener('click', () => { switchView('notes'); newNote(); });
   $('delete-note').addEventListener('click', deleteActive);
   $('note-title').addEventListener('input', scheduleSave);
   $('note-body').addEventListener('input', scheduleSave);
