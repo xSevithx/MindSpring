@@ -434,33 +434,91 @@ textarea.record-field-input { min-height: 4rem; resize: vertical; }
 .note-body-wrap {
   position: relative; flex: 1; display: flex; flex-direction: column;
 }
-.find-backdrop {
-  position: absolute; inset: 0; overflow: auto;
-  font-family: "Newsreader", serif;
-  font-size: 1.12rem; line-height: 1.75;
-  color: transparent; white-space: pre-wrap; word-wrap: break-word;
-  pointer-events: none; z-index: 0;
-  padding: 0;
+
+/* ---------- Rich text toolbar ---------- */
+.rt-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.15rem;
+  margin-bottom: 1rem; padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--rule);
+  position: sticky; top: 0; z-index: 5;
+  background: var(--paper);
 }
-.find-backdrop mark {
-  background: rgba(255, 210, 50, 0.45); color: transparent;
-  border-radius: 2px;
+.rt-btn {
+  min-width: 1.9rem; height: 1.9rem;
+  padding: 0 0.45rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid transparent; border-radius: var(--radius);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8rem; line-height: 1;
+  color: var(--ink-soft); cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.find-backdrop mark.active {
-  background: rgba(255, 140, 0, 0.7);
-  box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.4);
+.rt-btn:hover { background: rgba(255,255,255,0.55); color: var(--ink); border-color: var(--rule); }
+.rt-btn.is-active { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
+.rt-btn b, .rt-btn i, .rt-btn u, .rt-btn s { font-style: inherit; }
+.rt-btn b { font-weight: 700; }
+.rt-btn-code { font-size: 0.72rem; }
+.rt-sep {
+  width: 1px; align-self: stretch; margin: 0.15rem 0.3rem;
+  background: var(--rule);
 }
+
+/* ---------- Rich text editing surface ---------- */
 .note-body {
   flex: 1;
   font-family: "Newsreader", serif;
   font-size: 1.12rem;
   line-height: 1.75;
-  border: none; background: transparent; resize: none;
+  border: none; background: transparent;
   color: var(--ink);
   min-height: 40vh;
-  position: relative; z-index: 1;
+  overflow-wrap: break-word; word-break: break-word;
 }
 .note-body:focus { outline: none; }
+.note-body:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.note-body > *:first-child { margin-top: 0; }
+.note-body h1 {
+  font-family: "Fraunces", serif; font-weight: 600;
+  font-size: 1.6rem; line-height: 1.25; margin: 1.4rem 0 0.6rem;
+}
+.note-body h2 {
+  font-family: "Fraunces", serif; font-weight: 600;
+  font-size: 1.3rem; line-height: 1.3; margin: 1.2rem 0 0.5rem;
+}
+.note-body p { margin: 0 0 0.8rem; }
+.note-body ul, .note-body ol { margin: 0 0 0.8rem; padding-left: 1.6rem; }
+.note-body li { margin: 0.2rem 0; }
+.note-body blockquote {
+  margin: 0 0 0.9rem; padding: 0.2rem 0 0.2rem 1rem;
+  border-left: 3px solid var(--indigo); color: var(--ink-soft);
+  font-style: italic;
+}
+.note-body a { color: var(--indigo-bright); text-decoration: underline; }
+.note-body code {
+  font-family: "JetBrains Mono", monospace; font-size: 0.86em;
+  background: var(--paper-deep); padding: 0.1rem 0.35rem; border-radius: var(--radius);
+}
+.note-body pre {
+  font-family: "JetBrains Mono", monospace; font-size: 0.86rem; line-height: 1.6;
+  background: #1c1a17; color: #e8e2d6;
+  padding: 0.9rem 1.1rem; border-radius: var(--radius);
+  margin: 0 0 0.9rem; white-space: pre-wrap; word-break: break-word;
+}
+.note-body pre code { background: none; padding: 0; font-size: inherit; }
+
+/* ---------- Find highlights (CSS Custom Highlight API) ---------- */
+::highlight(find-all) {
+  background-color: rgba(255, 210, 50, 0.45);
+  border-radius: 2px;
+}
+::highlight(find-current) {
+  background-color: rgba(255, 140, 0, 0.75);
+  color: var(--ink);
+}
 
 /* ---------- Find Bar ---------- */
 .find-bar {
@@ -992,6 +1050,15 @@ textarea.record-field-input { min-height: 4rem; resize: vertical; }
   .editor-pane { padding: 1.6rem 1.2rem 1.4rem; }
   .note-title { font-size: 1.6rem; }
   .note-body { font-size: 1.08rem; }
+
+  /* Keep the toolbar to one scrollable row instead of eating vertical space */
+  .rt-toolbar {
+    flex-wrap: nowrap; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .rt-toolbar::-webkit-scrollbar { display: none; }
+  .rt-btn { flex: 0 0 auto; }
 
   /* Slide-over panels take the full screen */
   .ai-panel { width: 100%; }

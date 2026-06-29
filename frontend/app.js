@@ -14,6 +14,85 @@ let aiSending = false;
 
 const $ = (id) => document.getElementById(id);
 
+// ---------- Rich text helpers ----------
+// Notes created before the rich editor stored plain text. Detect that so we
+// can render old notes correctly while treating new notes as HTML.
+function isHtmlBody(s) {
+  return typeof s === 'string' && /<\/?[a-z][\s\S]*>/i.test(s);
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Turn a legacy plain-text body into safe HTML, preserving line breaks.
+function plainToHtml(s) {
+  if (!s) return '';
+  return escapeHtml(s).replace(/\r?\n/g, '<br>');
+}
+
+// Strip all markup down to readable text — used for search, AI context, etc.
+function htmlToPlain(html) {
+  if (!html) return '';
+  if (!isHtmlBody(html)) return html;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || '';
+}
+
+// Convert the editor's HTML into Markdown for export.
+function htmlToMarkdown(html) {
+  if (!html) return '';
+  if (!isHtmlBody(html)) return html;
+  const container = document.createElement('div');
+  container.innerHTML = html;
+
+  const walk = (node) => {
+    let out = '';
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) { out += child.nodeValue; return; }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = child.tagName.toLowerCase();
+      const inner = walk(child);
+      switch (tag) {
+        case 'h1': out += `\n# ${inner.trim()}\n\n`; break;
+        case 'h2': out += `\n## ${inner.trim()}\n\n`; break;
+        case 'h3': out += `\n### ${inner.trim()}\n\n`; break;
+        case 'strong': case 'b': out += `**${inner}**`; break;
+        case 'em': case 'i': out += `_${inner}_`; break;
+        case 's': case 'strike': case 'del': out += `~~${inner}~~`; break;
+        case 'code': out += '`' + inner + '`'; break;
+        case 'pre': out += `\n\`\`\`\n${inner.trim()}\n\`\`\`\n\n`; break;
+        case 'blockquote':
+          out += inner.trim().split('\n').map((l) => `> ${l}`).join('\n') + '\n\n';
+          break;
+        case 'ul':
+          child.querySelectorAll(':scope > li').forEach((li) => {
+            out += `- ${walk(li).trim()}\n`;
+          });
+          out += '\n';
+          break;
+        case 'ol': {
+          let i = 1;
+          child.querySelectorAll(':scope > li').forEach((li) => {
+            out += `${i++}. ${walk(li).trim()}\n`;
+          });
+          out += '\n';
+          break;
+        }
+        case 'a': out += `[${inner}](${child.getAttribute('href') || ''})`; break;
+        case 'br': out += '\n'; break;
+        case 'div': case 'p': out += inner + '\n'; break;
+        default: out += inner;
+      }
+    });
+    return out;
+  };
+
+  return walk(container).replace(/\n{3,}/g, '\n\n').trim();
+}
+
 // ---------- Mobile drawer ----------
 function isMobile() { return window.matchMedia('(max-width: 720px)').matches; }
 function openDrawer() { $('app-view').classList.add('drawer-open'); }
@@ -117,7 +196,7 @@ function renderList(filter = '') {
   list.innerHTML = '';
   const q = filter.toLowerCase();
   const shown = notes.filter((n) =>
-    !q || (n.title || '').toLowerCase().includes(q) || (n.body || '').toLowerCase().includes(q));
+    !q || (n.title || '').toLowerCase().includes(q) || htmlToPlain(n.body).toLowerCase().includes(q));
   for (const n of shown) {
     const li = document.createElement('li');
     li.className = 'note-item' + (n.id === activeId ? ' is-active' : '');
@@ -148,7 +227,9 @@ function selectNote(id) {
   $('empty-state').classList.add('hidden');
   $('editor-pane').classList.remove('hidden');
   $('note-title').value = n.title || '';
-  $('note-body').value = n.body || '';
+  const body = n.body || '';
+  $('note-body').innerHTML = isHtmlBody(body) ? body : plainToHtml(body);
+  resetFind();
   $('save-status').textContent = 'Saved';
   renderList($('search').value);
   if (isMobile()) closeDrawer();
@@ -178,7 +259,7 @@ async function saveActive() {
   const n = notes.find((x) => x.id === activeId);
   if (!n) return;
   n.title = $('note-title').value;
-  n.body = $('note-body').value;
+  n.body = $('note-body').innerHTML;
   try {
     const enc = await encryptNote(cryptoKey, { title: n.title, body: n.body });
     const row = await api(`/notes/${n.id}`, { method: 'PUT', body: JSON.stringify(enc) });
@@ -208,6 +289,70 @@ async function deleteActive() {
   else showEmpty();
 }
 
+// ---------- Rich text editor ----------
+// document.execCommand is deprecated but remains the most reliable, dependency-
+// free way to drive a contenteditable surface across browsers.
+function execEditorCommand(cmd, value = null) {
+  $('note-body').focus();
+  if (cmd === 'createLink') {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) {
+      showToast('Select some text first to turn it into a link.', 'error');
+      return;
+    }
+    const url = prompt('Link URL:', 'https://');
+    if (!url) return;
+    document.execCommand('createLink', false, url);
+  } else if (cmd === 'formatBlock') {
+    // Toggle: if the block is already this format, drop back to a paragraph.
+    const current = (document.queryCommandValue('formatBlock') || '').toLowerCase();
+    const target = current === value ? 'p' : value;
+    document.execCommand('formatBlock', false, `<${target}>`);
+  } else {
+    document.execCommand(cmd, false, value);
+  }
+  onEditorInput();
+  updateToolbarState();
+}
+
+function handleToolbarClick(e) {
+  const btn = e.target.closest('.rt-btn');
+  if (!btn) return;
+  e.preventDefault();
+  execEditorCommand(btn.dataset.cmd, btn.dataset.value || null);
+}
+
+function updateToolbarState() {
+  const inlineCmds = ['bold', 'italic', 'underline', 'strikeThrough',
+    'insertUnorderedList', 'insertOrderedList'];
+  let block = '';
+  try { block = (document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch { /* ignore */ }
+  document.querySelectorAll('#rt-toolbar .rt-btn').forEach((btn) => {
+    const cmd = btn.dataset.cmd;
+    let active = false;
+    try {
+      if (inlineCmds.includes(cmd)) active = document.queryCommandState(cmd);
+      else if (cmd === 'formatBlock') active = block === btn.dataset.value;
+    } catch { /* queryCommandState can throw when unfocused */ }
+    btn.classList.toggle('is-active', active);
+  });
+}
+
+function onEditorInput() {
+  const ed = $('note-body');
+  // Browsers leave a stray <br> behind when the editor is emptied, which
+  // defeats the :empty placeholder. Normalize it back to truly empty.
+  if (ed.innerHTML === '<br>' || ed.innerHTML === '<div><br></div>') ed.innerHTML = '';
+  scheduleSave();
+  if (!$('find-bar').classList.contains('hidden')) runFind();
+}
+
+function handleEditorPaste(e) {
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, text);
+}
+
 // ---------- Export ----------
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
@@ -229,7 +374,7 @@ function exportMarkdown() {
   const stamp = new Date().toISOString().slice(0, 10);
   const md = notes.map((n) => {
     const date = new Date(n.updated_at).toLocaleString();
-    return `# ${n.title || 'Untitled'}\n\n_Last updated: ${date}_\n\n${n.body || ''}`;
+    return `# ${n.title || 'Untitled'}\n\n_Last updated: ${date}_\n\n${htmlToMarkdown(n.body)}`;
   }).join('\n\n---\n\n');
   downloadFile(`mindspring-export-${stamp}.md`, md, 'text/markdown');
 }
@@ -560,7 +705,7 @@ async function sendAIMessage() {
   const thinkingEl = appendMessage('assistant', 'Thinking...');
 
   try {
-    const noteContext = notes.map((n) => ({ id: n.id, title: n.title, body: n.body }));
+    const noteContext = notes.map((n) => ({ id: n.id, title: n.title, body: htmlToPlain(n.body) }));
     const result = await api(`/ai/conversations/${activeConvoId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ content: messageContent, noteContext }),
@@ -666,7 +811,7 @@ async function syncToAI() {
   $('ai-sync-progress').textContent = 'Syncing...';
 
   try {
-    const payload = notes.map((n) => ({ id: n.id, title: n.title || '', body: n.body || '' }));
+    const payload = notes.map((n) => ({ id: n.id, title: n.title || '', body: htmlToPlain(n.body) }));
     const result = await api('/ai/sync', {
       method: 'POST',
       body: JSON.stringify({ notes: payload }),
@@ -688,7 +833,7 @@ async function syncToAI() {
 async function syncSingleNote(note) {
   await api('/ai/sync/note', {
     method: 'POST',
-    body: JSON.stringify({ id: note.id, title: note.title || '', body: note.body || '' }),
+    body: JSON.stringify({ id: note.id, title: note.title || '', body: htmlToPlain(note.body) }),
   });
 }
 
@@ -1349,8 +1494,24 @@ async function saveRecord() {
 }
 
 // ---------- Find in Note ----------
-let findMatches = [];
+// Highlights live on top of the contenteditable via the CSS Custom Highlight
+// API, so we never mutate the note's DOM while searching.
+let findRanges = [];
 let findIndex = -1;
+const supportsHighlights = typeof CSS !== 'undefined' && !!CSS.highlights && typeof Highlight !== 'undefined';
+
+function clearFindHighlights() {
+  if (!supportsHighlights) return;
+  CSS.highlights.delete('find-all');
+  CSS.highlights.delete('find-current');
+}
+
+function resetFind() {
+  findRanges = [];
+  findIndex = -1;
+  clearFindHighlights();
+  if ($('find-count')) $('find-count').textContent = '';
+}
 
 function toggleFindBar() {
   const bar = $('find-bar');
@@ -1358,109 +1519,83 @@ function toggleFindBar() {
   if (!isHidden) {
     $('find-input').focus();
     const sel = window.getSelection()?.toString() || '';
-    if (sel) { $('find-input').value = sel; runFind(); }
+    if (sel) { $('find-input').value = sel; }
+    runFind();
   } else {
     $('find-input').value = '';
-    $('find-count').textContent = '';
-    findMatches = [];
-    findIndex = -1;
-    renderFindHighlights();
+    resetFind();
   }
 }
 
 function runFind() {
   const query = $('find-input').value;
-  const body = $('note-body').value;
-  findMatches = [];
+  findRanges = [];
   findIndex = -1;
-  if (!query || !body) {
-    $('find-count').textContent = '';
-    renderFindHighlights();
-    return;
-  }
-  const lower = body.toLowerCase();
+  clearFindHighlights();
+
+  if (!query) { updateFindCount(); return; }
+
+  const editor = $('note-body');
   const q = query.toLowerCase();
-  let pos = 0;
-  while ((pos = lower.indexOf(q, pos)) !== -1) {
-    findMatches.push(pos);
-    pos += q.length;
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    const text = node.nodeValue.toLowerCase();
+    let pos = 0;
+    while ((pos = text.indexOf(q, pos)) !== -1) {
+      const range = document.createRange();
+      range.setStart(node, pos);
+      range.setEnd(node, pos + query.length);
+      findRanges.push(range);
+      pos += query.length;
+    }
   }
-  if (findMatches.length) {
-    findIndex = 0;
-    scrollToMatch();
-  }
-  renderFindHighlights();
+
+  if (findRanges.length) findIndex = 0;
+  applyFindHighlights();
   updateFindCount();
+  if (findIndex >= 0) scrollToMatch();
 }
 
-function escHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function renderFindHighlights() {
-  const backdrop = $('find-backdrop');
-  const body = $('note-body').value;
-  const query = $('find-input').value;
-
-  if (!query || !findMatches.length) {
-    backdrop.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-  let last = 0;
-  for (let i = 0; i < findMatches.length; i++) {
-    const start = findMatches[i];
-    html += escHtml(body.substring(last, start));
-    const matchText = body.substring(start, start + query.length);
-    const cls = i === findIndex ? 'active' : '';
-    html += `<mark class="${cls}">${escHtml(matchText)}</mark>`;
-    last = start + query.length;
-  }
-  html += escHtml(body.substring(last));
-  backdrop.innerHTML = html;
+function applyFindHighlights() {
+  if (!supportsHighlights) return;
+  CSS.highlights.delete('find-all');
+  CSS.highlights.delete('find-current');
+  if (!findRanges.length) return;
+  const others = findRanges.filter((_, i) => i !== findIndex);
+  if (others.length) CSS.highlights.set('find-all', new Highlight(...others));
+  if (findIndex >= 0) CSS.highlights.set('find-current', new Highlight(findRanges[findIndex]));
 }
 
 function scrollToMatch() {
-  if (findIndex < 0 || findIndex >= findMatches.length) return;
-  const ta = $('note-body');
-  const start = findMatches[findIndex];
-  const linesBefore = ta.value.substring(0, start).split('\n').length;
-  const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
-  ta.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
-  syncBackdropScroll();
-}
-
-function syncBackdropScroll() {
-  const ta = $('note-body');
-  const backdrop = $('find-backdrop');
-  backdrop.scrollTop = ta.scrollTop;
-  backdrop.scrollLeft = ta.scrollLeft;
+  if (findIndex < 0 || findIndex >= findRanges.length) return;
+  const el = findRanges[findIndex].startContainer.parentElement;
+  if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 function updateFindCount() {
   const el = $('find-count');
-  if (!findMatches.length) {
+  if (!findRanges.length) {
     el.textContent = $('find-input').value ? '0 / 0' : '';
   } else {
-    el.textContent = `${findIndex + 1} / ${findMatches.length}`;
+    el.textContent = `${findIndex + 1} / ${findRanges.length}`;
   }
 }
 
 function findNext() {
-  if (!findMatches.length) return;
-  findIndex = (findIndex + 1) % findMatches.length;
+  if (!findRanges.length) return;
+  findIndex = (findIndex + 1) % findRanges.length;
+  applyFindHighlights();
   scrollToMatch();
-  renderFindHighlights();
   updateFindCount();
   $('find-input').focus();
 }
 
 function findPrev() {
-  if (!findMatches.length) return;
-  findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+  if (!findRanges.length) return;
+  findIndex = (findIndex - 1 + findRanges.length) % findRanges.length;
+  applyFindHighlights();
   scrollToMatch();
-  renderFindHighlights();
   updateFindCount();
   $('find-input').focus();
 }
@@ -1623,8 +1758,18 @@ function init() {
   $('mobile-new').addEventListener('click', () => { switchView('notes'); newNote(); });
   $('delete-note').addEventListener('click', deleteActive);
   $('note-title').addEventListener('input', scheduleSave);
-  $('note-body').addEventListener('input', scheduleSave);
   $('search').addEventListener('input', (e) => renderList(e.target.value));
+
+  // Rich text editor
+  const editor = $('note-body');
+  editor.addEventListener('input', onEditorInput);
+  editor.addEventListener('paste', handleEditorPaste);
+  editor.addEventListener('keyup', updateToolbarState);
+  editor.addEventListener('mouseup', updateToolbarState);
+  editor.addEventListener('focus', updateToolbarState);
+  // Keep the caret/selection inside the editor when a toolbar button is pressed.
+  $('rt-toolbar').addEventListener('mousedown', (e) => e.preventDefault());
+  $('rt-toolbar').addEventListener('click', handleToolbarClick);
 
   // Sidebar view tabs
   document.querySelectorAll('.sidebar-nav-tab').forEach((t) => {
@@ -1657,7 +1802,6 @@ function init() {
   $('find-next').addEventListener('click', findNext);
   $('find-prev').addEventListener('click', findPrev);
   $('find-close').addEventListener('click', toggleFindBar);
-  $('note-body').addEventListener('scroll', syncBackdropScroll);
   $('find-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.shiftKey ? findPrev() : findNext(); }
     if (e.key === 'Escape') toggleFindBar();
